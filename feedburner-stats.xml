@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8" ?> 
+<Module>
+  <ModulePrefs title="FeedBurner Stats" height="220" description="Displays the number of subscribers to your FeedBurner feed for the past one week using graphs." author="Sudar" author_location="Chennai, India" screenshot="http://sudarmuthu.com/projects/google-gadgets/feedburner-stats.jpg" thumbnail="http://sudarmuthu.com/projects/google-gadgets/feedburner-stats.png" author_email="Sudar@sudarmuthu.com" author_link="http://SudarMuthu.com" author_aboutme="I am a web developer in my early twenties saying HI to you from the beautiful city of Chennai in India. Wanna know more about me, then visit my blog" author_quote="Convince, else confuse" author_photo="http://sudarmuthu.com/projects/sudar.png">
+		<Require feature="dynamic-height"/>
+		<Require feature="analytics" />
+  </ModulePrefs> 
+  <UserPref name="feedurl" display_name="Feed URL" datatype = "string" required="true" />  
+  <UserPref name="refreshinterval" display_name="Refresh Interval"  datatype = "string" required="true" default_value = "10" />    
+   <Content type="html"> 
+     <![CDATA[ 
+	<script>
+	     // Track this gadget using Google Analytics.
+	     _IG_Analytics("UA-3084019-1", "/feedburner-stats");
+	   </script>
+		<div id="content_div" style="font-size: small;">Retreving the stats from Feedburner. Please wait ...</div>
+		<script type="text/javascript">
+		
+		var prefs = new _IG_Prefs(__MODULE_ID__);
+
+  function simpleEncode(values,maxValue) {
+      var simpleEncoding = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      var chartData = ['s:'];
+      
+      for (var i = 0; i < values.length; i++) {
+        var currentValue = values[i];
+        if (!isNaN(currentValue) && currentValue >= 0) {
+          chartData.push(simpleEncoding.charAt(Math.round((simpleEncoding.length-1) * currentValue / maxValue)));
+        } else {
+          chartData.push('_');
+        }
+      }
+      return chartData.join('');
+  }
+
+    
+		function getFeedStats() {
+
+        Array.max = function( array ){
+            return Math.max.apply( Math, array );
+        };
+				var prefs = new _IG_Prefs(__MODULE_ID__);
+				
+				var currDate = new Date();
+				var endDate = currDate.getFullYear() + "-" + (currDate.getMonth() + 1 ) + "-" + currDate.getDate();
+				currDate.setDate(currDate.getDate() - 7);
+				var startDate = currDate.getFullYear() + "-" + (currDate.getMonth() + 1 ) + "-" + currDate.getDate();
+
+			_IG_FetchXmlContent('https://feedburner.google.com/awareness/1.0/GetFeedData?uri=' + prefs.getString("feedurl") + '&dates=' + startDate + "," + endDate , function (response) {
+      
+       if (response == null || typeof(response) != "object" || response.firstChild == null) { 
+				  _gel("content_div").innerHTML = "<i>There is some problem in accessing the FeedBurner server. Try after some time.</i>";
+				  return;
+				}
+				var html = "";
+				var aDate = new Array();
+				var aCount = new Array();
+				var maxCount = 0;
+
+        var result = response.getElementsByTagName("rsp").item(0).getAttribute("stat");
+
+        if (result == "ok") {				
+        
+  				var entryList = response.getElementsByTagName("entry");
+  				
+          for (var i = 0; i < entryList.length ; i++) {
+              aDate[i]  =  entryList.item(i).getAttribute("date").substr(8);
+              aCount[i] = entryList.item(i).getAttribute("circulation");
+              maxCount = (i == 0 )? maxCount = aCount[i] : Math.max(aCount[i], maxCount);
+          }
+  
+          var chartURL = "http://chart.apis.google.com/chart?cht=bvg&chs=300x200&%20&chxt=x,y&chd=" + simpleEncode(aCount, maxCount) + "&chxl=0:|" + aDate.join('|') + "&chxr=1,0," + maxCount + "&chtt=Number of subscribers|in the past week";
+          html += '<img src = "' + chartURL + '" />';
+        
+        } else {
+          html += "<i>" + response.getElementsByTagName("err").item(0).getAttribute("msg") + "</i>";
+        }		
+        		
+				_gel('content_div').innerHTML = html; 
+			});          
+		}	
+		
+		window.setTimeout("getFeedStats()", (prefs.getInt('refreshinterval') * 60 * 1000));
+
+		_IG_RegisterOnloadHandler(getFeedStats());
+
+       </script>        
+     ]]> 
+     
+   </Content>
+</Module>
